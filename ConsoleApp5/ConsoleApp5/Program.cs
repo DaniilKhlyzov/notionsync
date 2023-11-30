@@ -17,14 +17,8 @@ namespace ConsoleApp
                 LoginPage loginPage = new LoginPage();
                 SharePage sharePage = new SharePage(driver);
 
-                //loginPage.Login(driver,"hifizov@yandex.ru", "3730133vv");
-                sharePage.AddMember( "dankhlyzov@gmail.com",
-                    "https://www.notion.so/6890e249352f423f8d560cfcc863e844");
-                Thread.Sleep(10000);
-                //sharePage.Remove(driver, "dankhlyzov@gmail.com",
-                   // "https://www.notion.so/6890e249352f423f8d560cfcc863e844");
-                sharePage.CanView( "dankhlyzov@gmail.com",
-                    "https://www.notion.so/6890e249352f423f8d560cfcc863e844");
+            sharePage.ReadMemberandRights("https://www.notion.so/c895cd4719b74ffcaad491901689a8e9");
+
         }
     }
 
@@ -52,7 +46,16 @@ namespace ConsoleApp
         {
             Driver = (WebDriver)driver;
         }
+        public void ReadMemberandRights(string url)
+        {
+            Driver.Navigate().GoToUrl(url);
+            var member = Driver.FindElements(By.ClassName("notranslate"));
+            foreach (var element in member) 
+            {
+                Console.WriteLine(element.Text);
+            }
 
+        }
 
         public void AddMember(string member, string url)
         {
@@ -60,6 +63,7 @@ namespace ConsoleApp
             ClickShare();
             InputMember(member);
         }
+        
 
         public void Remove(string member, string url)
         {
