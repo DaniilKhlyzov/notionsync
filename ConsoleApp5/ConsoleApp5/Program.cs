@@ -17,8 +17,15 @@ namespace ConsoleApp
                 LoginPage loginPage = new LoginPage();
                 SharePage sharePage = new SharePage(driver);
 
-            sharePage.ReadMemberandRights("https://www.notion.so/c895cd4719b74ffcaad491901689a8e9");
-
+                //loginPage.Login(driver,"hifizov@yandex.ru", "3730133vv");
+               //sharePage.AddMember( "dankhlyzov@gmail.com",
+                   // "https://www.notion.so/6890e249352f423f8d560cfcc863e844");
+                //Thread.Sleep(10000);
+                //sharePage.Remove(driver, "dankhlyzov@gmail.com",
+                   // "https://www.notion.so/6890e249352f423f8d560cfcc863e844");
+                //sharePage.CanView( "dankhlyzov@gmail.com",
+                    //"https://www.notion.so/6890e249352f423f8d560cfcc863e844");
+           sharePage.ReadMemberandRights("https://www.notion.so/6890e249352f423f8d560cfcc863e844");
         }
     }
 
@@ -46,15 +53,17 @@ namespace ConsoleApp
         {
             Driver = (WebDriver)driver;
         }
+
         public void ReadMemberandRights(string url)
         {
             Driver.Navigate().GoToUrl(url);
+            ClickShare();
             var member = Driver.FindElements(By.ClassName("notranslate"));
             foreach (var element in member) 
             {
-                Console.WriteLine(element.Text);
+                Console.Write(element.Text);
             }
-
+            // to do сделать рабочим
         }
 
         public void AddMember(string member, string url)
@@ -99,7 +108,7 @@ namespace ConsoleApp
             var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
             ClickShare();
             ClickMember(member);
-            var canComment = wait.Until(ExpectedConditions.ElementIsVisible(By.XPath("//div[contains(text(),'R')]")));
+            var canComment = wait.Until(ExpectedConditions.ElementIsVisible(By.XPath("//div[contains(text(),'Cancomment')]")));
             canComment.Click();
         }
 
@@ -113,6 +122,7 @@ namespace ConsoleApp
         private void InputMember(string member)
         {
             var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
+            // to do переделать слектор
             var addMember = wait.Until(ExpectedConditions.ElementIsVisible(By.CssSelector("#notion-app > div > div.notion-overlay-container.notion-default-overlay-container > div:nth-child(2) > div > div:nth-child(2) > div:nth-child(2) > div > div > div > div > div > div > div:nth-child(2) > div:nth-child(1) > div > div:nth-child(1) > div.notion-scroller.vertical.horizontal > div > input[type=email]")));
             addMember.SendKeys(member);
             var invite = Driver.FindElement(By.XPath("//div[contains(text(), 'Invite')]"));
