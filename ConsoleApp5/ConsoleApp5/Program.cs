@@ -4,6 +4,14 @@ using OpenQA.Selenium.Support.UI;
 using System;
 using System.Threading;
 using SeleniumExtras.WaitHelpers;
+using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.Collections;
+using System.Runtime.CompilerServices;
+using OpenQA.Selenium.Support.Extensions;
+using System.Reflection.Metadata;
+using System.Xml.Linq;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace ConsoleApp
 {
@@ -14,20 +22,24 @@ namespace ConsoleApp
             ChromeOptions options = new ChromeOptions();
             options.AddArgument("user-data-dir=C:\\AcerGrey\\AppData\\Local\\Google\\Chrome\\User Data\\Profile2");
             IWebDriver driver = new ChromeDriver(options);
-                LoginPage loginPage = new LoginPage();
-                SharePage sharePage = new SharePage(driver);
+            LoginPage loginPage = new();
+            SharePage sharePage = new SharePage(driver);
+            //cчитываем таблицу или файл, сравнение с тем что на странице, если есть все хорошо, следующий, если нет на странице добавлем, затем нужные права, если нет в списке удаляем, добавить возможность исключения, затем повторная проверка
+            //loginPage.Login(driver, "dankhlyzov@gmail.com", "rWX-yFZ-PcN-AkA");
+            //sharePage.AddMember( "dankhlyzov@gmail.com",
+            // "https://www.notion.so/6890e249352f423f8d560cfcc863e844"); 
+            //Thread.Sleep(10000);
+            //sharePage.Remove(driver, "dankhlyzov@gmail.com",
+            // "https://www.notion.so/6890e249352f423f8d560cfcc863e844");
+            //sharePage.CanView( "dankhlyzov@gmail.com",
+            //"https://www.notion.so/6890e249352f423f8d560cfcc863e844");
+            var emailPermissions = new Dictionary<string, string>();
+            var url = "https://www.notion.so/6890e249352f423f8d560cfcc863e844";
+            sharePage.ReadMembersRightsOnPage(url);
 
-                //loginPage.Login(driver,"hifizov@yandex.ru", "3730133vv");
-               //sharePage.AddMember( "dankhlyzov@gmail.com",
-                   // "https://www.notion.so/6890e249352f423f8d560cfcc863e844");
-                //Thread.Sleep(10000);
-                //sharePage.Remove(driver, "dankhlyzov@gmail.com",
-                   // "https://www.notion.so/6890e249352f423f8d560cfcc863e844");
-                //sharePage.CanView( "dankhlyzov@gmail.com",
-                    //"https://www.notion.so/6890e249352f423f8d560cfcc863e844");
-           sharePage.ReadMemberandRights("https://www.notion.so/6890e249352f423f8d560cfcc863e844");
         }
     }
+    
 
     public class LoginPage
     {
@@ -54,23 +66,65 @@ namespace ConsoleApp
             Driver = (WebDriver)driver;
         }
 
-        public void ReadMemberandRights(string url)
+        public string ReadMemberRightsOnPage(string url, string member)
         {
             Driver.Navigate().GoToUrl(url);
             ClickShare();
-            var member = Driver.FindElements(By.ClassName("notranslate"));
-            foreach (var element in member) 
-            {
-                Console.Write(element.Text);
-            }
-            // to do сделать рабочим
+            var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
+            //to do селектор сделать нормальным
+            var addMember = wait.Until(ExpectedConditions.ElementIsVisible(By.CssSelector("#notion-app > div > div.notion-overlay-container.notion-default-overlay-container > div:nth-child(2) > div > div:nth-child(2) > div:nth-child(2) > div > div > div > div > div > div > div:nth-child(2) > div:nth-child(1) > div > div:nth-child(1) > div.notion-scroller.vertical.horizontal > div > input[type=email]")));
+            addMember.SendKeys(member);
+            addMember.Click();
+            Thread.Sleep(1000);
+            var rights = Driver.FindElements(By.ClassName("notranslate"));
+            return rights.Last().Text;
         }
+        public void ReadMembersRightsOnPage(string url)
+        {
+            Driver.Navigate().GoToUrl(url);
+            IJavaScriptExecutor jsExecutor = (IJavaScriptExecutor)Driver;
+            Thread.Sleep(100);
+            // JavaScript-скрипт для извлечения текста элементов с классом "notionslate" и их вложенных элементов
+            string script = "let elements = document.getElementsByClassName('notionslate');" +
+                             "let texts = [];"+ 
+                             "for (var i = 0; i < elements.length; i++)"+
+                             "{"+
+                                "let element = elements[i];"+
+                                "let text = element.textContent || element.innerText;"+
+                                "texts.push(text);"+
+                              "}" +
+                              "return texts;";
+        
+
+
+            var extractedTexts = (ReadOnlyCollection<object>)jsExecutor.ExecuteScript(script);
+            List<string> extractedTextList = new List<string>();
+            foreach (var text in extractedTexts)
+            {
+                extractedTextList.Add(text.ToString());
+            }
+            foreach (var extractedText in extractedTextList)
+            {
+                Console.WriteLine(extractedText);
+            }
+        }
+
+
+
+
+
+
 
         public void AddMember(string member, string url)
         {
             Driver.Navigate().GoToUrl(url);
             ClickShare();
-            InputMember(member);
+            var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
+            var addMember = wait.Until(ExpectedConditions.ElementIsVisible(By.CssSelector("#notion-app > div > div.notion-overlay-container.notion-default-overlay-container > div:nth-child(2) > div > div:nth-child(2) > div:nth-child(2) > div > div > div > div > div > div > div:nth-child(2) > div:nth-child(1) > div > div:nth-child(1) > div.notion-scroller.vertical.horizontal > div > input[type=email]")));
+            addMember.SendKeys(member);
+            var invite = Driver.FindElement(By.XPath("//div[contains(text(), 'Invite')]"));
+            invite.SendKeys(Keys.Enter);
+            invite.Click();
         }
         
 
@@ -108,26 +162,15 @@ namespace ConsoleApp
             var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
             ClickShare();
             ClickMember(member);
-            var canComment = wait.Until(ExpectedConditions.ElementIsVisible(By.XPath("//div[contains(text(),'Cancomment')]")));
+            var canComment = wait.Until(ExpectedConditions.ElementIsVisible(By.XPath("//div[contains(text(),'Can comment')]")));
             canComment.Click();
         }
 
         private void ClickShare()
         {
-            var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
+                var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(40));
             var share = wait.Until(ExpectedConditions.ElementIsVisible(By.XPath("//div[contains(text(), 'Share')]")));
             share.Click();
-        }
-
-        private void InputMember(string member)
-        {
-            var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
-            // to do переделать слектор
-            var addMember = wait.Until(ExpectedConditions.ElementIsVisible(By.CssSelector("#notion-app > div > div.notion-overlay-container.notion-default-overlay-container > div:nth-child(2) > div > div:nth-child(2) > div:nth-child(2) > div > div > div > div > div > div > div:nth-child(2) > div:nth-child(1) > div > div:nth-child(1) > div.notion-scroller.vertical.horizontal > div > input[type=email]")));
-            addMember.SendKeys(member);
-            var invite = Driver.FindElement(By.XPath("//div[contains(text(), 'Invite')]"));
-            invite.SendKeys(Keys.Enter);
-            invite.Click();
         }
 
         private void ClickMember(string member)
