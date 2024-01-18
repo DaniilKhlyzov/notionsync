@@ -20,23 +20,78 @@ namespace ConsoleApp
         static void Main()
         {
             ChromeOptions options = new ChromeOptions();
-            options.AddArgument("user-data-dir=C:\\AcerGrey\\AppData\\Local\\Google\\Chrome\\User Data\\Profile2");
+            options.AddArgument("user-data-dir=C:\\angel\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 1");
             IWebDriver driver = new ChromeDriver(options);
-            LoginPage loginPage = new();
+            LoginPage loginPage = new LoginPage();
             SharePage sharePage = new SharePage(driver);
-            //cчитываем таблицу или файл, сравнение с тем что на странице, если есть все хорошо, следующий, если нет на странице добавлем, затем нужные права, если нет в списке удаляем, добавить возможность исключения, затем повторная проверка
-            //loginPage.Login(driver, "dankhlyzov@gmail.com", "rWX-yFZ-PcN-AkA");
-            //sharePage.AddMember( "dankhlyzov@gmail.com",
-            // "https://www.notion.so/6890e249352f423f8d560cfcc863e844"); 
-            //Thread.Sleep(10000);
-            //sharePage.Remove(driver, "dankhlyzov@gmail.com",
-            // "https://www.notion.so/6890e249352f423f8d560cfcc863e844");
-            //sharePage.CanView( "dankhlyzov@gmail.com",
-            //"https://www.notion.so/6890e249352f423f8d560cfcc863e844");
+            
             var emailPermissions = new Dictionary<string, string>();
-            var url = "https://www.notion.so/6890e249352f423f8d560cfcc863e844";
-            sharePage.ReadMembersRightsOnPage(url);
+            var url = "https://www.notion.so/c895cd4719b74ffcaad491901689a8e9";
+            using (var reader = new StreamReader("C:\\Users\\angel\\OneDrive\\Документы\\GitHub\\notionsync\\ConsoleApp5\\ConsoleApp5\\test.txt"))
+            {
+                var line = "";
+                while ((line = reader.ReadLine()) != null)
+                {
+                    var parts = line.Split(',');
 
+                    if (parts.Length == 2)
+                    {
+                        var email = parts[0].Trim();
+                        var permissions = parts[1].Trim();
+                        emailPermissions[email] = permissions;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Некорректный формат строки: " + line);
+                    }
+                }
+            }
+            var emailPermissionsOnPage = sharePage.Filter(sharePage.ReadMembersRightsOnPage(url));
+            foreach (var emailPermissionOnPage in emailPermissionsOnPage)
+            {
+                if (emailPermissions.ContainsKey(emailPermissionOnPage.Key))
+                {
+                    var permissions = emailPermissions[emailPermissionOnPage.Key];
+                    if (permissions != emailPermissionOnPage.Value)
+                    {
+                        sharePage.AddMember(emailPermissionOnPage.Key, url);
+                        if (permissions == "Can edit")
+                        {
+                            sharePage.CanEdit(emailPermissionOnPage.Key, url);
+                        }
+                        if (permissions == "Cancomment")
+                        {
+                            sharePage.CanComment(emailPermissionOnPage.Key, url);
+                        }
+                        if (permissions == "Can view")
+                        {
+                            sharePage.CanView(emailPermissionOnPage.Key, url);
+                        }
+                    }
+                    sharePage.Remove(emailPermissionOnPage.Key, url);
+                    emailPermissions.Remove(emailPermissionOnPage.Key);
+                }
+
+            }
+            foreach (var emailPermission in emailPermissions)
+            {
+                var permissions = emailPermissions[emailPermission.Key];
+                sharePage.AddMember(emailPermission.Key, url);
+                if (permissions == "Can edit")
+                {
+                    sharePage.CanEdit(emailPermission.Key, url);
+                }
+                if (permissions == "Cancomment")
+                {
+                    sharePage.CanComment(emailPermission.Key, url);
+                }
+                if (permissions == "Can view")
+                {
+                    sharePage.CanView(emailPermission.Key, url);
+                }
+  
+            }
+            Console.WriteLine("Всё готово Хозяин");
         }
     }
     
@@ -69,6 +124,7 @@ namespace ConsoleApp
         public string ReadMemberRightsOnPage(string url, string member)
         {
             Driver.Navigate().GoToUrl(url);
+            Thread.Sleep(100); 
             ClickShare();
             var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
             //to do селектор сделать нормальным
@@ -79,42 +135,72 @@ namespace ConsoleApp
             var rights = Driver.FindElements(By.ClassName("notranslate"));
             return rights.Last().Text;
         }
-        public void ReadMembersRightsOnPage(string url)
+        public List<string> ReadMembersRightsOnPage(string url)
         {
+            var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
             Driver.Navigate().GoToUrl(url);
             IJavaScriptExecutor jsExecutor = (IJavaScriptExecutor)Driver;
-            Thread.Sleep(100);
+            ClickShare();
+            Thread.Sleep(5000);
             // JavaScript-скрипт для извлечения текста элементов с классом "notionslate" и их вложенных элементов
-            string script = "let elements = document.getElementsByClassName('notionslate');" +
-                             "let texts = [];"+ 
-                             "for (var i = 0; i < elements.length; i++)"+
-                             "{"+
-                                "let element = elements[i];"+
-                                "let text = element.textContent || element.innerText;"+
-                                "texts.push(text);"+
-                              "}" +
-                              "return texts;";
-        
+            string script = @"let texts = []; 
+                  let elements = document.getElementsByClassName('notranslate');
+                  for (var i = 0; i < elements.length; i++)
+                  {
+                      let element = elements[i];
+                      let text = element.textContent || element.innerText;
+                      texts.push(text);
+                  }
+                  return texts;";
 
 
+            var listofguest = new List<string>();
             var extractedTexts = (ReadOnlyCollection<object>)jsExecutor.ExecuteScript(script);
-            List<string> extractedTextList = new List<string>();
             foreach (var text in extractedTexts)
             {
-                extractedTextList.Add(text.ToString());
+                var nnew = text.ToString();
+                if (!String.IsNullOrEmpty(nnew))
+                {
+                    listofguest.Add(text.ToString());
+                }
             }
-            foreach (var extractedText in extractedTextList)
-            {
-                Console.WriteLine(extractedText);
-            }
+            foreach (var text in listofguest)
+                Console.WriteLine(text);
+            return listofguest;
+            
         }
-
-
-
-
-
-
-
+        public Dictionary<string,string> Filter(List<string> mas)
+        {
+            var slovar = new Dictionary<string, string>();
+            for (int i = 0; i < mas.Count; i++)
+            {
+                Console.WriteLine(mas[i]);
+                var str = mas[i];
+                if (str.Contains("Guest") && str.Length > 10)
+                {
+                    var num = str.IndexOf("Guest");
+                    str = str.Substring(num + 5);
+                    if (str.Contains("Can edit"))
+                    {
+                        slovar.Add(str.Substring(0, str.IndexOf("Can edit")), str.Substring(str.IndexOf("Can edit")));
+                    }
+                    if (str.Contains("Can view"))
+                    {
+                        slovar.Add(str.Substring(0, str.IndexOf("Can view")), str.Substring(str.IndexOf("Can view")));
+                    }
+                    if (str.Contains("Can comment"))
+                    {
+                        slovar.Add(str.Substring(0, str.IndexOf("Can comment")), str.Substring(str.IndexOf("Can comment")) );
+                    }
+                    if (str.Contains("Full access"))
+                    {
+                        slovar.Add(str.Substring(0, str.IndexOf("Full access")), str.Substring(str.IndexOf("Full access")) );
+                    }
+                }
+            }
+        return slovar;
+    }
+        
         public void AddMember(string member, string url)
         {
             Driver.Navigate().GoToUrl(url);
@@ -168,7 +254,8 @@ namespace ConsoleApp
 
         private void ClickShare()
         {
-                var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(40));
+            Thread.Sleep(1000);
+            var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(100));
             var share = wait.Until(ExpectedConditions.ElementIsVisible(By.XPath("//div[contains(text(), 'Share')]")));
             share.Click();
         }
